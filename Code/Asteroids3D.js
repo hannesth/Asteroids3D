@@ -5,6 +5,24 @@
 //
 //
 /////////////////////////////////////////////////////////////////
+/*
+
+To-do list
+- Wrap world
+- Multiple asteroids
+- Spaceship
+- Spaceship viewing angle
+- Spaceship movement with arrow keys
+- Collision detection for spaceship
+- If collision Start at initial location
+- Shooting mechanism
+- Collision detection for shot
+- If collision Split Asteroid into two asteroids one size smaller
+- Point system
+
+*/
+
+
 var canvas;
 var gl;
 
@@ -30,60 +48,31 @@ var origX;
 var origY;
 
 var maxNumber = 20;
-var refSize = 0.1;
+var refSize = 0.2;
+var refSpeed = 0.1;
 var initializeAsteroids = 0;
 
-/*
-// Three types of sizes for asteroids. 
-// If value is zero then it is not drawn
-// Vector of length maxNumber. 
-// Possible values : {0, 1, 2, 3}
-var sizeAsteroid = new Array(maxNumber).fill(0);
-
-sizeAsteroid[0] = 3;
-
-// Position of asteroids
-// Matrix of size maxNumber x 3 matrix
-var deltaAsteroid = new Array(maxNumber).fill(0);
-deltaAsteroid = deltaAsteroid.map( function(x) {
-    return new Array(3).fill(0);
-});
-deltaAsteroid[0][0] = 0.1;
-deltaAsteroid[0][1] = 0.1;
-deltaAsteroid[0][2] = 0.1;
-
-// Two angles theta and phi for 3D direction
-// Matrix of size maxNumber x 2
-// -180 < theta < 180
-// -90< phi < 90
-var directionAsteroid = new Array(maxNumber).fill(0);
-directionAsteroid = directionAsteroid.map( function(x) {
-    return new Array(2).fill(0);
-});
-directionAsteroid = directionAsteroid.map( function(x) {
-    return x.map( function(x) {
-            return x[0] = Math.floor(Math.random()*360 - 180);
-            return x[1] = Math.floor(Math.random()*180 - 90);
-    });
-});
-
-console.log(deltaAsteroid)
-
-
-// Traversal speed of Asteroids
-// Vector of length maxNumber
-var speedAsteroid = new Array(maxNumber).fill(0);
-speedAsteroid = 0.1
-*/
-
-
+var viewBoxLength = 20.0;
 
 var zDist = -4.0;
 
 var proLoc;
 var mvLoc;
 
-//Asteroid "Class" description
+
+
+
+//Asteroid "Class" description:
+// Three types of sizes for asteroids. 
+// If value is zero then it is not drawn
+// Vector of length maxNumber. 
+// Possible values : {0, 1, 2, 3}
+
+
+// Two angles theta and phi for 3D direction
+// Matrix of size maxNumber x 2
+// -180 < theta < 180
+// -90< phi < 90
 function Asteroid(size) {
     
     this.size = size;
@@ -99,7 +88,7 @@ function Asteroid(size) {
     dir[1] = Math.random()*180 - 90;
     this.direction = dir;
 
-    this.speed = Math.random()*0.1;
+    this.speed = (4-this.size)*refSpeed;
 }
 
 Asteroid.prototype.setPosition = function(pos) {
@@ -130,15 +119,35 @@ Asteroid.prototype.changePosition = function() {
         dPosition = [dx, dy, dy];
 
         var sum = new Array(3);
-        for(var i = 0; i < 2; i++){
-            sum.push(position[i] + dPosition[i]);
+        for(var i = 0; i <= 2; i++){
+            sum[i] = position[i] + dPosition[i];
         }
-        console.log("dPosition");
-        console.log(dPosition);
-        console.log("sum");
-        console.log(sum);
 
         this.position = sum;
+};
+
+Asteroid.prototype.wrapIfOutOfBounds = function() {
+    var pos = asteroid1.getPosition();
+    if(pos[0] < -viewBoxLength){
+        pos[0] = viewBoxLength;
+    }
+    if(pos[0] > viewBoxLength){
+        pos[0] = -viewBoxLength;
+    }
+    if(pos[1] < -viewBoxLength){
+        pos[1] = viewBoxLength;
+    }
+    if(pos[1] > viewBoxLength){
+        pos[1] = -viewBoxLength;
+    }
+    if(pos[2] < -viewBoxLength){
+        pos[2] = viewBoxLength;
+    }
+    if(pos[2] > viewBoxLength){
+        pos[2] = -viewBoxLength;
+    }
+
+    this.position = pos;
 };
 
 
@@ -306,6 +315,7 @@ function render()
             initializeAsteroids++;
         }
 
+        //         perspective(fovy, aspect, near, far)
         var proj = perspective( 50.0, 1.0, 0.2, 100.0 );
         gl.uniformMatrix4fv(proLoc, false, flatten(proj));
         
@@ -314,14 +324,18 @@ function render()
         ctm = mult( ctm, rotate( parseFloat(spinY), [0, 1, 0] ) );
 
         var position = asteroid1.getPosition();
+        var realSize = refSize*asteroid1.size;
 
         ctm = mult( ctm, translate(position[0], position[1], position[2]));
-        
+        ctm = mult( ctm, scalem(realSize, realSize, realSize));
 
         gl.uniformMatrix4fv(mvLoc, false, flatten(ctm));
         gl.drawArrays( gl.TRIANGLES, 0, NumVertices );
+        console.log("position");
         console.log(position);
+        
         asteroid1.changePosition();
+        asteroid1.wrapIfOutOfBounds();
 
     }, 100)
 }
