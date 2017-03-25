@@ -1,60 +1,157 @@
 /////////////////////////////////////////////////////////////////
-//    Verkefni 2 í Tölvugrafík
-//    Game of Life in 3D
+//      Asteroids in 3D 
+//      based upon cube-tex.js 
+//      by Hjálmtýr Hafsteinsson, mars 2017
+//
+//
 /////////////////////////////////////////////////////////////////
-
-
-//
-// Global Variables
-//
-
 var canvas;
 var gl;
 
-var numVertices  = 36;
+var NumVertices  = 36;
+
+var program;
+var texture;
 
 var points = [];
-var colors = [];
+var texCoords = [];
 
-var height = 0.0;
+var xAxis = 0;
+var yAxis = 1;
+var zAxis = 2;
+
+var axis = 0;
+var theta = [ 0, 0, 0 ];
 
 var movement = false;     // Do we rotate?
-var spinX = -45;
-var spinY = -45;
+var spinX = 0;
+var spinY = 0;
 var origX;
 var origY;
 
-var ctm;
+var maxNumber = 20;
+var refSize = 0.1;
+var initializeAsteroids = 0;
 
-// Size of view Box
-var lengthViewBox = 1.7;
+/*
+// Three types of sizes for asteroids. 
+// If value is zero then it is not drawn
+// Vector of length maxNumber. 
+// Possible values : {0, 1, 2, 3}
+var sizeAsteroid = new Array(maxNumber).fill(0);
 
-var near = -lengthViewBox;
-var far = lengthViewBox;
-var left = -lengthViewBox;
-var right = lengthViewBox;
-var ytop = lengthViewBox;
-var bottom = -lengthViewBox;
+sizeAsteroid[0] = 3;
 
-var modelViewMatrix, projectionMatrix;
-var modelViewMatrixLoc, projectionMatrixLoc;
+// Position of asteroids
+// Matrix of size maxNumber x 3 matrix
+var deltaAsteroid = new Array(maxNumber).fill(0);
+deltaAsteroid = deltaAsteroid.map( function(x) {
+    return new Array(3).fill(0);
+});
+deltaAsteroid[0][0] = 0.1;
+deltaAsteroid[0][1] = 0.1;
+deltaAsteroid[0][2] = 0.1;
+
+// Two angles theta and phi for 3D direction
+// Matrix of size maxNumber x 2
+// -180 < theta < 180
+// -90< phi < 90
+var directionAsteroid = new Array(maxNumber).fill(0);
+directionAsteroid = directionAsteroid.map( function(x) {
+    return new Array(2).fill(0);
+});
+directionAsteroid = directionAsteroid.map( function(x) {
+    return x.map( function(x) {
+            return x[0] = Math.floor(Math.random()*360 - 180);
+            return x[1] = Math.floor(Math.random()*180 - 90);
+    });
+});
+
+console.log(deltaAsteroid)
 
 
-var consoleCount = 0;
-
-var timeToRender = 50;
-
-
-
-
+// Traversal speed of Asteroids
+// Vector of length maxNumber
+var speedAsteroid = new Array(maxNumber).fill(0);
+speedAsteroid = 0.1
+*/
 
 
 
+var zDist = -4.0;
 
-//
-// init function:
-//
+var proLoc;
+var mvLoc;
 
+//Asteroid "Class" description
+function Asteroid(size) {
+    
+    this.size = size;
+
+    var pos = new Array(3);
+    pos[0] = Math.random()*(2.0-size) - (2.0-size)/2.0;
+    pos[1] = Math.random()*(2.0-size) - (2.0-size)/2.0;
+    pos[2] = Math.random()*(2.0-size) - (2.0-size)/2.0;
+    this.position = pos;
+
+    var dir = new Array(2);
+    dir[0] = Math.random()*360 - 180;
+    dir[1] = Math.random()*180 - 90;
+    this.direction = dir;
+
+    this.speed = Math.random()*0.1;
+}
+
+Asteroid.prototype.setPosition = function(pos) {
+        this.position = pos;
+};
+
+Asteroid.prototype.getSize = function() {
+        return this.size;
+};
+Asteroid.prototype.getPosition = function() {
+        return this.position;
+};
+Asteroid.prototype.getDirection = function() {
+        return this.direction;
+};
+Asteroid.prototype.getSpeed = function() {
+        return this.speed;
+};
+Asteroid.prototype.changePosition = function() {
+        var position = asteroid1.getPosition();
+        var direction = asteroid1.getDirection();
+        var speed = asteroid1.getSpeed();
+
+        var dPosition = new Array(3);
+        var dx = speed*Math.cos(radians(direction[0]))*Math.cos(radians(direction[1]));
+        var dy = speed*Math.sin(radians(direction[0]))*Math.cos(radians(direction[1]));
+        var dz = speed*Math.cos(radians(direction[0]))*Math.sin(radians(direction[1]));
+        dPosition = [dx, dy, dy];
+
+        var sum = new Array(3);
+        for(var i = 0; i < 2; i++){
+            sum.push(position[i] + dPosition[i]);
+        }
+        console.log("dPosition");
+        console.log(dPosition);
+        console.log("sum");
+        console.log(sum);
+
+        this.position = sum;
+};
+
+
+
+function configureTexture( image ) {
+    texture = gl.createTexture();
+    gl.bindTexture( gl.TEXTURE_2D, texture );
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    gl.texImage2D( gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image );
+    gl.generateMipmap( gl.TEXTURE_2D );
+    gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR );
+    gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR );
+}
 
 window.onload = function init()
 {
@@ -75,7 +172,8 @@ window.onload = function init()
     //
     var program = initShaders( gl, "vertex-shader", "fragment-shader" );
     gl.useProgram( program );
-    
+
+/*    
     var cBuffer = gl.createBuffer();
     gl.bindBuffer( gl.ARRAY_BUFFER, cBuffer );
     gl.bufferData( gl.ARRAY_BUFFER, flatten(colors), gl.STATIC_DRAW );
@@ -83,7 +181,7 @@ window.onload = function init()
     var vColor = gl.getAttribLocation( program, "vColor" );
     gl.vertexAttribPointer( vColor, 4, gl.FLOAT, false, 0, 0 );
     gl.enableVertexAttribArray( vColor );
-
+*/
     var vBuffer = gl.createBuffer();
     gl.bindBuffer( gl.ARRAY_BUFFER, vBuffer );
     gl.bufferData( gl.ARRAY_BUFFER, flatten(points), gl.STATIC_DRAW );
@@ -92,33 +190,20 @@ window.onload = function init()
     gl.vertexAttribPointer( vPosition, 3, gl.FLOAT, false, 0, 0 );
     gl.enableVertexAttribArray( vPosition );
 
-    modelViewMatrixLoc = gl.getUniformLocation( program, "modelViewMatrix" );
-    projectionMatrixLoc = gl.getUniformLocation( program, "projectionMatrix" );
-
+    var tBuffer = gl.createBuffer();
+    gl.bindBuffer( gl.ARRAY_BUFFER, tBuffer);
+    gl.bufferData( gl.ARRAY_BUFFER, flatten(texCoords), gl.STATIC_DRAW );
     
-    
+    var vTexCoord = gl.getAttribLocation( program, "vTexCoord" );
+    gl.vertexAttribPointer( vTexCoord, 2, gl.FLOAT, false, 0, 0 );
+    gl.enableVertexAttribArray( vTexCoord );
 
+    var image = document.getElementById("texImage");
+    configureTexture( image );
 
-
-    // Event listener for keys up and down (zooming in and out)
-
-    //Event listener for keyboard
-    window.addEventListener("keydown", function(e){
-        switch( e.keyCode ) {
-            case 38: //efri ör
-                if(lengthViewBox > 0.5) {
-                    lengthViewBox *= 0.9;
-                }
-                break;
-            case 40: //neðri ör
-                lengthViewBox *= 1.1;
-                break;
-            default:
-                lengthViewBox *= 1.0;
-
-        }
-    });
-
+    proLoc = gl.getUniformLocation( program, "projection" );
+    mvLoc = gl.getUniformLocation( program, "modelview" );
+    gl.uniform1i(gl.getUniformLocation(program, "texture"), 0);
 
 
 
@@ -136,30 +221,36 @@ window.onload = function init()
 
     canvas.addEventListener("mousemove", function(e){
         if(movement) {
-    	    spinY = ( spinY + (e.offsetX - origX) ) % 360;
-            spinX = ( spinX + (e.offsetY - origY) ) % 360;
+            spinY = ( spinY + (e.offsetX - origX) ) % 360;
+            spinX = ( spinX + (origY - e.offsetY) ) % 360;
             origX = e.offsetX;
             origY = e.offsetY;
         }
     } );
     
+    // Event listener for keyboard
+     window.addEventListener("keydown", function(e){
+         switch( e.keyCode ) {
+            case 38:    // upp ör
+                zDist += 0.1;
+                break;
+            case 40:    // niður ör
+                zDist -= 0.1;
+                break;
+         }
+     }  );  
+
+    // Event listener for mousewheel
+     window.addEventListener("mousewheel", function(e){
+         if( e.wheelDelta > 0.0 ) {
+             zDist += 0.1;
+         } else {
+             zDist -= 0.1;
+         }
+     }  );  
+
     render();
 }
-
-
-
-
-
-
-
-
-
-
-
-
-//
-// Several helper functions:
-//
 
 
 
@@ -186,80 +277,51 @@ function quad(a, b, c, d)
         vec3(  0.5, -0.5, -0.5 )
     ];
 
-    var vertexColors = [
-        [ 0.0, 0.0, 0.0, 1.0 ],  // black
-        [ 1.0, 0.0, 0.0, 1.0 ],  // red
-        [ 1.0, 1.0, 0.0, 1.0 ],  // yellow
-        [ 0.0, 1.0, 0.0, 1.0 ],  // green
-        [ 0.0, 0.0, 1.0, 1.0 ],  // blue
-        [ 0.5, 0.0, 0.5, 1.0 ],  // purple
-        [ 1.0, 1.0, 1.0, 1.0 ]   // white
-        [ 0.0, 0.0, 0.0, 1.0 ],  // black   
+    var texCo = [
+        vec2(0, 0),
+        vec2(0, 1),
+        vec2(1, 1),
+        vec2(1, 0)
     ];
 
-    // We need to parition the quad into two triangles in order for
-    // WebGL to be able to render it.  In this case, we create two
-    // triangles from the quad indices
-    
-    //vertex color assigned by the index of the vertex
-    
+    //vertex texture coordinates assigned by the index of the vertex
     var indices = [ a, b, c, a, c, d ];
+    var texind  = [ 1, 0, 3, 1, 3, 2 ];
 
     for ( var i = 0; i < indices.length; ++i ) {
         points.push( vertices[indices[i]] );
-        colors.push(vertexColors[indices[0]]);
-        
+        texCoords.push( texCo[texind[i]] );
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-//
-// render function:
-//
 
 function render()
 {
     setTimeout(function() {
-        window.requestAnimFrame(render);
+        window.requestAnimFrame( render );
         gl.clear( gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+        // Initialize asteroids
+        if(initializeAsteroids == 0) {
+            asteroid1 = new Asteroid(3);
+            initializeAsteroids++;
+        }
+
+        var proj = perspective( 50.0, 1.0, 0.2, 100.0 );
+        gl.uniformMatrix4fv(proLoc, false, flatten(proj));
+        
+        var ctm = lookAt( vec3(0.0, 0.0, zDist), vec3(0.0, 0.0, 0.0), vec3(0.0, 1.0, 0.0) );
+        ctm = mult( ctm, rotate( parseFloat(spinX), [1, 0, 0] ) );
+        ctm = mult( ctm, rotate( parseFloat(spinY), [0, 1, 0] ) );
+
+        var position = asteroid1.getPosition();
+
+        ctm = mult( ctm, translate(position[0], position[1], position[2]));
         
 
-        //  Projection Matrix   
-        near = -lengthViewBox;
-        far = lengthViewBox;
-        left = -lengthViewBox;
-        right = lengthViewBox;
-        ytop = lengthViewBox;
-        bottom = -lengthViewBox; 
-        projectionMatrix = ortho(left, right, bottom, ytop, near, far);
-        gl.uniformMatrix4fv( projectionMatrixLoc, false, flatten(projectionMatrix) );
+        gl.uniformMatrix4fv(mvLoc, false, flatten(ctm));
+        gl.drawArrays( gl.TRIANGLES, 0, NumVertices );
+        console.log(position);
+        asteroid1.changePosition();
 
-        
-
-
-        // View rotations
-        ctm = mat4();
-        ctm = mult( ctm, rotateX(spinX) );
-        ctm = mult( ctm, rotateY(spinY) ) ;
-
-        gl.uniformMatrix4fv(modelViewMatrixLoc, false, flatten(ctm));
-        gl.drawArrays( gl.TRIANGLES, 0, numVertices ); 
-
-
-    }, timeToRender)
+    }, 100)
 }
-
