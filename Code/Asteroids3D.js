@@ -8,7 +8,7 @@
 /*
 
 To-do list
-- Wrap world
+- Wrap world 
 - Multiple asteroids
 - Spaceship
 - Spaceship viewing angle
@@ -50,7 +50,7 @@ var origY;
 var maxNumber = 20;
 var refSize = 0.2;
 var refSpeed = 0.1;
-var initializeAsteroids = 0;
+var consoleCount = 0;
 
 var viewBoxLength = 20.0;
 
@@ -58,6 +58,28 @@ var zDist = -4.0;
 
 var proLoc;
 var mvLoc;
+
+function List() {
+    this.start = null;
+    this.end = null;
+
+}
+
+List.makeNode = function(){
+    return {data:null, next:null};
+};
+
+List.prototype.add = function(data){
+    if(this.start===null){
+        this.start=List.makeNode();
+        this.end=this.start;
+    }
+    else {
+        this.end.next = List.makeNode();
+        this.end = this.end.next;
+    }
+    this.end.data = data;
+}
 
 
 
@@ -108,9 +130,9 @@ Asteroid.prototype.getSpeed = function() {
         return this.speed;
 };
 Asteroid.prototype.changePosition = function() {
-        var position = asteroid1.getPosition();
-        var direction = asteroid1.getDirection();
-        var speed = asteroid1.getSpeed();
+        var position = this.position;
+        var direction = this.direction;
+        var speed = this.speed;
 
         var dPosition = new Array(3);
         var dx = speed*Math.cos(radians(direction[0]))*Math.cos(radians(direction[1]));
@@ -127,7 +149,7 @@ Asteroid.prototype.changePosition = function() {
 };
 
 Asteroid.prototype.wrapIfOutOfBounds = function() {
-    var pos = asteroid1.getPosition();
+    var pos = this.position;
     if(pos[0] < -viewBoxLength){
         pos[0] = viewBoxLength;
     }
@@ -161,6 +183,15 @@ function configureTexture( image ) {
     gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR );
     gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR );
 }
+
+
+
+// Initialize asteroids
+var asteroidList = new List();
+for(var i=1; i<= 10; i++){
+    asteroidList.add(new Asteroid(3));
+}
+
 
 window.onload = function init()
 {
@@ -215,6 +246,9 @@ window.onload = function init()
     gl.uniform1i(gl.getUniformLocation(program, "texture"), 0);
 
 
+    
+    
+    
 
     //event listeners for mouse
     canvas.addEventListener("mousedown", function(e){
@@ -309,33 +343,46 @@ function render()
         window.requestAnimFrame( render );
         gl.clear( gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-        // Initialize asteroids
-        if(initializeAsteroids == 0) {
-            asteroid1 = new Asteroid(3);
-            initializeAsteroids++;
-        }
-
-        //         perspective(fovy, aspect, near, far)
+        //  proj = perspective(fovy, aspect, near, far)
         var proj = perspective( 50.0, 1.0, 0.2, 100.0 );
         gl.uniformMatrix4fv(proLoc, false, flatten(proj));
+
+        var mvStack = [];
         
-        var ctm = lookAt( vec3(0.0, 0.0, zDist), vec3(0.0, 0.0, 0.0), vec3(0.0, 1.0, 0.0) );
-        ctm = mult( ctm, rotate( parseFloat(spinX), [1, 0, 0] ) );
-        ctm = mult( ctm, rotate( parseFloat(spinY), [0, 1, 0] ) );
+        var mv = lookAt( vec3(0.0, 0.0, zDist), vec3(0.0, 0.0, 0.0), vec3(0.0, 1.0, 0.0) );
+        mv = mult( mv, rotate( parseFloat(spinX), [1, 0, 0] ) );
+        mv = mult( mv, rotate( parseFloat(spinY), [0, 1, 0] ) );
 
-        var position = asteroid1.getPosition();
-        var realSize = refSize*asteroid1.size;
-
-        ctm = mult( ctm, translate(position[0], position[1], position[2]));
-        ctm = mult( ctm, scalem(realSize, realSize, realSize));
-
-        gl.uniformMatrix4fv(mvLoc, false, flatten(ctm));
-        gl.drawArrays( gl.TRIANGLES, 0, NumVertices );
-        console.log("position");
-        console.log(position);
         
-        asteroid1.changePosition();
-        asteroid1.wrapIfOutOfBounds();
+
+        var position;
+        var realSize;
+        var currentAsteroid = asteroidList.start;
+        while (currentAsteroid !== null) {
+            mvStack.push(mv);
+
+            position = currentAsteroid.data.getPosition();
+            realSize = refSize*currentAsteroid.data.size;
+
+            mv = mult( mv, translate(position[0], position[1], position[2]));
+            mv = mult( mv, scalem(realSize, realSize, realSize));
+
+            gl.uniformMatrix4fv(mvLoc, false, flatten(mv));
+            gl.drawArrays( gl.TRIANGLES, 0, NumVertices );
+
+            mv = mvStack.pop();
+
+            console.log("position");
+            console.log(position);
+        
+            currentAsteroid.data.changePosition();
+            currentAsteroid.data.wrapIfOutOfBounds();
+
+            currentAsteroid = currentAsteroid.next; 
+        }
+
+        
+        
 
     }, 100)
 }
