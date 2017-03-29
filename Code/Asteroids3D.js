@@ -10,9 +10,9 @@
 To-do list
 - Wrap world 
 - Multiple asteroids
+- Pitch and yaw with arrow keys
+- Euler angles
 - Spaceship
-- Spaceship viewing angle
-- Spaceship movement with arrow keys
 - Collision detection for spaceship
 - If collision Start at initial location
 - Shooting mechanism
@@ -49,12 +49,32 @@ var origY;
 
 var maxNumber = 20;
 var refSize = 0.2;
-var refSpeed = 0.1;
+var refSpeed = 0.05;
 var consoleCount = 0;
 
-var viewBoxLength = 20.0;
+var viewBoxLength = 15.0;
 
-var zDist = -4.0;
+var initialNumberOfAsteroids = 40;
+
+var pitch = 0.0;
+var yaw = 0.0;
+var dPitch = 0.0;
+var dYaw = 0.0;
+var eye = [0.0, 0.0, 0.0];
+var delta = 0.0;
+var deltaAngle = 1.0;
+
+
+
+var xBodyAxis = [1.0, 0.0, 0.0, 0.0];
+var yBodyAxis = [0.0, 1.0, 0.0, 0.0];
+var zBodyAxis = [0.0, 0.0, -1.0, 0.0]
+
+var pyv = pitchYawView(eye, pitch, yaw, xBodyAxis, yBodyAxis);
+
+var axisRotationMatrix;
+
+
 
 var proLoc;
 var mvLoc;
@@ -95,14 +115,14 @@ List.prototype.add = function(data){
 // Matrix of size maxNumber x 2
 // -180 < theta < 180
 // -90< phi < 90
-function Asteroid(size) {
+function Asteroid() {
     
-    this.size = size;
+    this.size = Math.floor(Math.random()*3.0) + 1.0;
 
     var pos = new Array(3);
-    pos[0] = Math.random()*(2.0-size) - (2.0-size)/2.0;
-    pos[1] = Math.random()*(2.0-size) - (2.0-size)/2.0;
-    pos[2] = Math.random()*(2.0-size) - (2.0-size)/2.0;
+    pos[0] = Math.random()*(viewBoxLength-this.size) - (viewBoxLength-this.size)/2.0;
+    pos[1] = Math.random()*(viewBoxLength-this.size) - (viewBoxLength-this.size)/2.0;
+    pos[2] = Math.random()*(viewBoxLength-this.size) - (viewBoxLength-this.size)/2.0;
     this.position = pos;
 
     var dir = new Array(2);
@@ -188,7 +208,7 @@ function configureTexture( image ) {
 
 // Initialize asteroids
 var asteroidList = new List();
-for(var i=1; i<= 10; i++){
+for(var i=1; i <= initialNumberOfAsteroids; i++){
     asteroidList.add(new Asteroid(3));
 }
 
@@ -247,50 +267,43 @@ window.onload = function init()
 
 
     
-    
-    
-
-    //event listeners for mouse
-    canvas.addEventListener("mousedown", function(e){
-        movement = true;
-        origX = e.offsetX;
-        origY = e.offsetY;
-        e.preventDefault();         // Disable drag and drop
-    } );
-
-    canvas.addEventListener("mouseup", function(e){
-        movement = false;
-    } );
-
-    canvas.addEventListener("mousemove", function(e){
-        if(movement) {
-            spinY = ( spinY + (e.offsetX - origX) ) % 360;
-            spinX = ( spinX + (origY - e.offsetY) ) % 360;
-            origX = e.offsetX;
-            origY = e.offsetY;
-        }
-    } );
-    
     // Event listener for keyboard
      window.addEventListener("keydown", function(e){
          switch( e.keyCode ) {
             case 38:    // upp ör
-                zDist += 0.1;
+                if(pitch<90){
+                    dPitch = deltaAngle;
+                    pitch += dPitch;
+                    yBodyAxis = mult(rotate(dPitch, xBodyAxis), yBodyAxis);
+                    zBodyAxis = mult(rotate(dPitch, xBodyAxis), zBodyAxis);
+                }
                 break;
             case 40:    // niður ör
-                zDist -= 0.1;
+                if(pitch>-90){
+                    dPitch = -deltaAngle;
+                    pitch += dPitch;
+                    yBodyAxis = mult(rotate(dPitch, xBodyAxis), yBodyAxis);
+                    zBodyAxis = mult(rotate(dPitch, xBodyAxis), zBodyAxis);
+                }
+                break;
+            case 37:    // vinstri ör
+                dYaw = deltaAngle;
+                yaw += dYaw;
+                xBodyAxis = mult(rotate(dYaw, yBodyAxis), xBodyAxis);
+                zBodyAxis = mult(rotate(dYaw, yBodyAxis), zBodyAxis);
+                break;
+            case 39:    // hægri ör
+                dYaw = -deltaAngle;
+                yaw += dYaw;
+                xBodyAxis = mult(rotate(dYaw, yBodyAxis), xBodyAxis);
+                zBodyAxis = mult(rotate(dYaw, yBodyAxis), zBodyAxis);
+                break;
+            case 32:    // bilstöng
+                delta += 10;
                 break;
          }
      }  );  
-
-    // Event listener for mousewheel
-     window.addEventListener("mousewheel", function(e){
-         if( e.wheelDelta > 0.0 ) {
-             zDist += 0.1;
-         } else {
-             zDist -= 0.1;
-         }
-     }  );  
+ 
 
     render();
 }
@@ -349,11 +362,14 @@ function render()
 
         var mvStack = [];
         
-        var mv = lookAt( vec3(0.0, 0.0, zDist), vec3(0.0, 0.0, 0.0), vec3(0.0, 1.0, 0.0) );
-        mv = mult( mv, rotate( parseFloat(spinX), [1, 0, 0] ) );
-        mv = mult( mv, rotate( parseFloat(spinY), [0, 1, 0] ) );
+        console.log(xBodyAxis);
+        console.log(yBodyAxis);
 
-        
+        pyv = mult(pitchYawView(eye, dPitch, dYaw, xBodyAxis, yBodyAxis), pyv);
+        dPitch = 0.0;
+        dYaw = 0.0;
+        var mv = pyv;
+
 
         var position;
         var realSize;
@@ -372,17 +388,10 @@ function render()
 
             mv = mvStack.pop();
 
-            console.log("position");
-            console.log(position);
-        
             currentAsteroid.data.changePosition();
             currentAsteroid.data.wrapIfOutOfBounds();
 
             currentAsteroid = currentAsteroid.next; 
         }
-
-        
-        
-
     }, 100)
 }
