@@ -49,7 +49,7 @@ var origY;
 
 var maxNumber = 20;
 var refSize = 0.2;
-var refSpeed = 0.05;
+var refSpeed = 0.01;
 var consoleCount = 0;
 
 var viewBoxLength = 15.0;
@@ -58,19 +58,15 @@ var initialNumberOfAsteroids = 40;
 
 var pitch = 0.0;
 var yaw = 0.0;
-var dPitch = 0.0;
-var dYaw = 0.0;
+var dPitch = 5.0;
+var dYaw = 5.0;
 var eye = [0.0, 0.0, 0.0];
 var delta = 0.0;
 var deltaAngle = 1.0;
 
 
 
-var xBodyAxis = [1.0, 0.0, 0.0, 0.0];
-var yBodyAxis = [0.0, 1.0, 0.0, 0.0];
-var zBodyAxis = [0.0, 0.0, -1.0, 0.0]
-
-var pyv = pitchYawView(eye, pitch, yaw, xBodyAxis, yBodyAxis);
+var mv;
 
 var axisRotationMatrix;
 
@@ -233,15 +229,6 @@ window.onload = function init()
     var program = initShaders( gl, "vertex-shader", "fragment-shader" );
     gl.useProgram( program );
 
-/*    
-    var cBuffer = gl.createBuffer();
-    gl.bindBuffer( gl.ARRAY_BUFFER, cBuffer );
-    gl.bufferData( gl.ARRAY_BUFFER, flatten(colors), gl.STATIC_DRAW );
-
-    var vColor = gl.getAttribLocation( program, "vColor" );
-    gl.vertexAttribPointer( vColor, 4, gl.FLOAT, false, 0, 0 );
-    gl.enableVertexAttribArray( vColor );
-*/
     var vBuffer = gl.createBuffer();
     gl.bindBuffer( gl.ARRAY_BUFFER, vBuffer );
     gl.bufferData( gl.ARRAY_BUFFER, flatten(points), gl.STATIC_DRAW );
@@ -272,31 +259,19 @@ window.onload = function init()
          switch( e.keyCode ) {
             case 38:    // upp ör
                 if(pitch<90){
-                    dPitch = deltaAngle;
-                    pitch += dPitch;
-                    yBodyAxis = mult(rotate(dPitch, xBodyAxis), yBodyAxis);
-                    zBodyAxis = mult(rotate(dPitch, xBodyAxis), zBodyAxis);
+                    pitch += deltaAngle;
                 }
                 break;
             case 40:    // niður ör
                 if(pitch>-90){
-                    dPitch = -deltaAngle;
-                    pitch += dPitch;
-                    yBodyAxis = mult(rotate(dPitch, xBodyAxis), yBodyAxis);
-                    zBodyAxis = mult(rotate(dPitch, xBodyAxis), zBodyAxis);
+                    pitch -= deltaAngle;
                 }
                 break;
             case 37:    // vinstri ör
-                dYaw = deltaAngle;
-                yaw += dYaw;
-                xBodyAxis = mult(rotate(dYaw, yBodyAxis), xBodyAxis);
-                zBodyAxis = mult(rotate(dYaw, yBodyAxis), zBodyAxis);
+                yaw += deltaAngle;
                 break;
             case 39:    // hægri ör
-                dYaw = -deltaAngle;
-                yaw += dYaw;
-                xBodyAxis = mult(rotate(dYaw, yBodyAxis), xBodyAxis);
-                zBodyAxis = mult(rotate(dYaw, yBodyAxis), zBodyAxis);
+                yaw -= deltaAngle;
                 break;
             case 32:    // bilstöng
                 delta += 10;
@@ -362,13 +337,8 @@ function render()
 
         var mvStack = [];
         
-        console.log(xBodyAxis);
-        console.log(yBodyAxis);
 
-        pyv = mult(pitchYawView(eye, dPitch, dYaw, xBodyAxis, yBodyAxis), pyv);
-        dPitch = 0.0;
-        dYaw = 0.0;
-        var mv = pyv;
+        mv = pitchYawView(eye, pitch, yaw);
 
 
         var position;
@@ -393,5 +363,5 @@ function render()
 
             currentAsteroid = currentAsteroid.next; 
         }
-    }, 100)
+    }, 25)
 }
