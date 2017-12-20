@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+
+    <meta charset="utf-8"></meta>
+
+    <script id="vertex-shader" type="x-shader/x-vertex">
+      attribute  vec4 vPosition;
+      attribute  vec4 vColor;
+      varying vec4 fColor;
+
+      uniform mat4 modelViewMatrix;
+      uniform mat4 projectionMatrix;
+
+      void main()
+      {
+        fColor = vColor;
+        gl_Position = projectionMatrix * modelViewMatrix * vPosition;
+      }
+    </script>
+
+    <script id="fragment-shader" type="x-shader/x-fragment">
+
+      precision mediump float;
+
+      varying  vec4 fColor;
+
+      void main()
+      {
+        gl_FragColor = fColor;
+      }
+    </script>
+
+    <script type="text/javascript" src="../Common/webgl-utils.js"></script>
+    <script type="text/javascript" src="../Common/initShaders.js"></script>
+    <script type="text/javascript" src="../Common/MV.js"></script>
+    <script type="text/javascript" src="../Common/pitchYawView.js"></script>
+    <script type="text/javascript" src="lib/script.js"></script>
+    <link rel="stylesheet" type="text/css" href="styles.css"></link>
+
+    <title>Asteroids 3D</title>
+
+  </head>
+  <body>
+
+    <h1>Asteroids in 3D</h1>
+
+    <div class="canvas-block">
+      <canvas>
+        Oops ... your browser doesn't support the HTML5 canvas element
+      </canvas>
+    </div>
+
+    <img id = "texImage" src = "Concrete_RockyFoundation_Height.jpg" hidden></img>
+  </body>
+</html>

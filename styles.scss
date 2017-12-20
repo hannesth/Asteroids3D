@@ -1,0 +1,22 @@
+html {
+  font-size: 16px;
+  background-color: black;
+}
+
+h1 {
+  text-align: center;
+  margin-top: 3rem auto 1rem auto;
+  color: #fff;
+}
+
+.canvas-block {
+  display: flex;
+}
+
+canvas {
+  justify-content: center;
+  margin: auto;
+  width: 35vw;
+  height: 35vw;
+  border: 1px solid #fff;
+}
