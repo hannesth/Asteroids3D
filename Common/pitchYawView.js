@@ -1,12 +1,12 @@
 
-function pitchYawView( eye, p, y, xBodyAxis, yBodyAxis )
+function pitchYawView( eye, p, y)
 {
     var minusEye = [-eye[0], -eye[1], -eye[2]];
 
-    var temp = translate(minusEye);
-    temp = mult(temp, rotateX(p));
+    var temp = rotateX(p);
     temp = mult(temp, rotateY(y));
-    
-     
+    temp = mult(temp,translate(minusEye));
+
+
     return temp;
 }

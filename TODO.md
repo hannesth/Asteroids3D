@@ -1,12 +1,10 @@
 # To-do list
-- Wrap world
-- Multiple asteroids
-- Pitch and yaw with arrow keys
-- Euler angles
-- Spaceship
+- movement
+- Shooting mechanism
+- Start screen
 - Collision detection for spaceship
 - If collision Start at initial location
-- Shooting mechanism
+- Spaceship
 - Collision detection for shot
 - If collision Split Asteroid into two asteroids one size smaller
 - Point system

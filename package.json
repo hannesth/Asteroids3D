@@ -12,16 +12,18 @@
     "stylelint": "stylelint *.scss scss/*.scss --syntax scss",
     "lint": "npm-run-all --parallel eslint stylelint",
     "babel": "babel src --watch --out-dir lib --source-maps",
+    "watchify": "watchify src/main.js -o src/script.js",
     "browser-sync": "browser-sync start --server --files index.html styles.css lib/script.js",
     "sass": "node-sass --source-map-embed --watch styles.scss styles.css",
-    "dev": "npm-run-all --parallel sass babel browser-sync"
+    "dev": "npm-run-all --parallel sass watchify babel browser-sync"
   },
-  "author": "",
+  "author": "Hannes Þór Sveinbjörnsson",
   "license": "ISC",
   "devDependencies": {
     "babel-cli": "6.26.0",
     "babel-eslint": "8.0.1",
     "babel-preset-env": "1.6.1",
+    "browserify": "2.0.0",
     "browser-sync": "2.18.13",
     "eslint": "4.9.0",
     "eslint-config-airbnb-base": "12.1.0",
@@ -29,6 +31,10 @@
     "node-sass": "4.5.3",
     "npm-run-all": "4.1.1",
     "stylelint": "8.1.1",
-    "stylelint-config-primer": "2.0.1"
+    "stylelint-config-primer": "2.0.1",
+    "watchify": "3.10.0"
+  },
+  "dependencies": {
+    "quaternion": "^2.0.0"
   }
 }
