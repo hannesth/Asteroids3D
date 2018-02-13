@@ -2,7 +2,7 @@
 
   Asteroids in 3D
 */
-
+var count1 = 1;
 const Quaternion = require('quaternion');
 
 let canvas;
@@ -11,7 +11,7 @@ let gl;
 let NumVerticesSphere = 0;
 let NumVerticesAsteroid = 36;
 
-let count = 7;
+let count = 5;
 
 const sphereIndex = 0;
 
@@ -23,17 +23,17 @@ const vb = vec4(0.0, 0.942809, 0.333333, 1);
 const vc = vec4(-0.816497, -0.471405, 0.333333, 1);
 const vd = vec4(0.816497, -0.471405, 0.333333,1);
 
-const shipSpeed = 0.02;
+const shipSpeed = 0.04;
 
 const refSize = 0.2;
 const refSpeed = 0.01;
 
-const bulletSize = 0.02;
-const bulletSpeed = 0.02;
+const bulletSize = 0.005;
+const bulletSpeed = 0.03;
 
-const viewBoxLength = 15.0;
+const viewBoxLength = 20.0;
 
-const initialNumberOfAsteroids = 40;
+const initialNumberOfAsteroids = 20;
 
 let pitch = 0.0;
 let yaw = 0.0;
@@ -47,6 +47,8 @@ const deltaAngle = 1;
 
 let proLoc;
 let mvLoc;
+
+const keyPressed = {};
 
 const vertices = [
   vec4( -0.5, -0.5,  0.5, 1.0 ),
@@ -151,24 +153,17 @@ List.prototype.remove = function(id) {
 }
 
 function changePos(position, direction, speed) {
-  let dPosition = new Array(3);
-  let dx = speed*Math.cos(radians(direction[0]))*Math.cos(radians(direction[1]));
-  let dy = speed*Math.sin(radians(direction[0]))*Math.cos(radians(direction[1]));
-  let dz = speed*Math.cos(radians(direction[0]))*Math.sin(radians(direction[1]));
-  dPosition = [dx, dy, dy];
-
-  let sum = new Array(3);
-  for(let i = 0; i <= 2; i++){
-      sum[i] = position[i] + dPosition[i];
-  }
-
-  return sum;
+  position[0] += speed*Math.cos(radians(direction[0]))*Math.cos(radians(direction[1]));
+  position[1] += speed*Math.sin(radians(direction[0]))*Math.cos(radians(direction[1]));
+  position[2] += speed*Math.cos(radians(direction[0]))*Math.sin(radians(direction[1]));
+  return position;
 }
 
 
-function forward() {
-  eye[0] =  eye[0] - shipSpeed*Math.sin(radians(yaw));
-  eye[2] =  eye[2] - shipSpeed*Math.cos(radians(yaw));
+function forward(pos, dir, speed) {
+  pos[0] -= speed*Math.sin(radians(dir));
+  pos[2] -= speed*Math.cos(radians(dir));
+  return pos;
 }
 
 //Asteroid "Class" description:
@@ -228,14 +223,15 @@ Asteroid.prototype.wrapIfOutOfBounds = function() {
 };
 
 function Bullet() {
-  this.position = eye;
+  let posB = eye.slice();
+  posB[1] -= 2
+  this.position = posB;
 
-  this.direction = [yaw, pitch];
+  this.direction = yaw.valueOf();
 }
 
 Bullet.prototype.changePosition = function() {
-  console.log(this.position);
-  this.position = changePos(this.position, this.direction, bulletSpeed);
+  this.position = forward(this.position, this.direction, bulletSpeed);
 };
 
 Bullet.prototype.wrapIfOutOfBounds = function() {
@@ -261,6 +257,19 @@ Bullet.prototype.wrapIfOutOfBounds = function() {
 
   this.position = pos;
 };
+
+
+
+function interf() {
+  if (keyPressed["38"]) eye[1] += shipSpeed; // upp ör
+  if (keyPressed["40"]) eye[1] -= shipSpeed; // niður ör
+  if (keyPressed["37"]) yaw += deltaAngle; // vinstri ör
+  if (keyPressed["39"]) yaw -= deltaAngle; // hægri ör
+  if (keyPressed["88"]) bulletList.add(new Bullet()); // x
+  if (keyPressed["90"]) eye = forward(eye, yaw, shipSpeed); // z
+}
+
+
 
 window.onload = function init()
 {
@@ -296,28 +305,13 @@ window.onload = function init()
   mvLoc = gl.getUniformLocation( program, "modelViewMatrix" );
 
   // Event listener for keyboard
-  window.addEventListener("keydown", function(e){
-    switch( e.keyCode ) {
-      case 38:    // upp ör
-          eye[1] += shipSpeed;
-          break;
-      case 40:    // niður ör
-          eye[1] -= shipSpeed;
-          break;
-      case 37:    // vinstri ör
-          yaw += deltaAngle;
-          break;
-      case 39:    // hægri ör
-          yaw -= deltaAngle;
-          break;
-      case 88:    // x
-          bulletList.add(new Bullet());
-          break;
-      case 90:    // z
-          forward();
-          break;
-    }
-  });
+  window.addEventListener('keydown', function(e) {
+    keyPressed[e.keyCode] = true;
+  }, false);
+  document.addEventListener('keyup', function(e) {
+   keyPressed[e.keyCode] = false;
+  }, false);
+
 
   render();
 }
@@ -338,8 +332,10 @@ function render()
       window.requestAnimFrame( render );
       gl.clear( gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
+      interf();
+
       //  proj = perspective(fovy, aspect, near, far)
-      let proj = perspective( 75.0, 1.0, 0.2, 100.0 );
+      let proj = perspective( 75.0, 1.0, 0.01, 100.0 );
       gl.uniformMatrix4fv(proLoc, false, flatten(proj));
 
 
@@ -364,14 +360,16 @@ function render()
         currentAsteroid = currentAsteroid.next;
       }
 
-      /*
       let currentBullet = bulletList.start;
       while (currentBullet !== null) {
 
-        position = currentBullet.data.position;
+        let position = currentBullet.data.position;
 
-        mv = pitchYawView(eye, pitch, yaw);
+
+        let mv = mat4();
         mv = mult( mv, scalem(bulletSize, bulletSize, bulletSize));
+        mv = mult(mv, rotateY(yaw));
+        mv = mult(mv, translate(-eye[0], -eye[1], -eye[2]));
         mv = mult( mv, translate(position[0], position[1], position[2]));
 
         gl.uniformMatrix4fv(mvLoc, false, flatten(mv));
@@ -382,8 +380,6 @@ function render()
 
         currentBullet = currentBullet.next;
       }
-
-      */
 
   }, 25)
 }
